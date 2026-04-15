@@ -98,6 +98,10 @@ class CsvLoader(FileLoader):
         self._skiprows = self._ask_skiprows()
         df_after_skip = self._read_with_skip(nrows=5)
         st.subheader(f"データ開始行({self._skiprows}行目)以降のプレビュー")
+        st.caption(
+            "💡 数値データが始まる行をサイドバーの「データ開始行」で指定してください。"
+            "ヘッダや単位行など数値以外の行が含まれると読み込みエラーの原因になります。"
+        )
         st.dataframe(df_after_skip)
 
         # ユーザーに使用列を選択してもらう

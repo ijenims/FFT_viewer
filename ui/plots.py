@@ -115,7 +115,7 @@ def show_fft_result(result: FFTResult) -> None:
     ))
     fig.update_layout(
         xaxis_title="Frequency (Hz)",
-        yaxis_title="Acceleration",
+        yaxis_title="Amplitude Spectrum",
         title=f"Column {result.column} FFT Result",
         yaxis_type=yscale,
         height=500,

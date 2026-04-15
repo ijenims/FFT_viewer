@@ -5,8 +5,12 @@ core.fft — FFT（高速フーリエ変換）分析処理
 時系列の数値データを受け取り、周波数スペクトルを計算する。
 numpy.fft を使用し、正の周波数成分のみを返す。
 
-将来的にウィンドウ関数の適用や零埋め（ゼロパディング）などの
-前処理を追加する場合は、このモジュール内で拡張する。
+前処理として以下を適用する:
+    - 平均値除去: DC オフセット（センサバイアス等）を除去
+    - Hann 窓: 有限長データのスペクトル漏れ（リーケージ）を低減
+
+将来的にゼロパディングや他の窓関数への切替などの
+拡張を行う場合は、このモジュール内で対応する。
 """
 
 from typing import Tuple
@@ -60,21 +64,35 @@ class FFTAnalyzer:
     def _compute(self) -> Tuple[np.ndarray, np.ndarray]:
         """FFT の実計算を行う内部メソッド。
 
+        前処理として平均値除去と Hann 窓を適用してから FFT を実行する。
+
         処理手順:
-            1. サンプリング間隔 dt = 1 / sampling_freq を算出
-            2. numpy.fft.fft で複素スペクトルを取得
-            3. numpy.fft.fftfreq で対応する周波数軸を生成
-            4. 正の周波数成分のみを抽出（DC 成分 0 Hz は除外）
-            5. 振幅は複素数の絶対値
+            1. 平均値除去（DC オフセットの除去）
+               — データの平均値を引くことで、0 Hz 付近の巨大なピークを抑制する。
+                 センサのバイアスや計測系のオフセットに起因する成分を取り除く。
+            2. Hann 窓の適用
+               — 有限長データの両端不連続によるスペクトル漏れ（リーケージ）を低減する。
+                 Hann 窓は汎用性が高く、周波数分解能と漏れ抑制のバランスが良い。
+            3. numpy.fft.fft で複素スペクトルを取得
+            4. numpy.fft.fftfreq で対応する周波数軸を生成
+            5. 正の周波数成分のみを抽出（DC 成分 0 Hz は除外）
+            6. 振幅は複素数の絶対値
 
         Returns:
             (frequencies, amplitudes) のタプル。
             frequencies: 正の周波数 [Hz] の配列（0 Hz を除く）。
             amplitudes: 対応する振幅スペクトルの配列。
         """
+        # 平均値除去 — DC オフセットを取り除く
+        detrended = self._data - np.mean(self._data)
+
+        # Hann 窓適用 — スペクトル漏れを低減
+        window = np.hanning(len(detrended))
+        windowed = detrended * window
+
         dt = 1.0 / self._sampling_freq
-        fft_vals = np.fft.fft(self._data)
-        freqs = np.fft.fftfreq(len(self._data), d=dt)
+        fft_vals = np.fft.fft(windowed)
+        freqs = np.fft.fftfreq(len(windowed), d=dt)
 
         # 前半（正の周波数側）のみ取り出す
         half = len(freqs) // 2
